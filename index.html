@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Advanced Particle Simulator - Create amazing particle simulations with multiple materials and physics effects">
+    <title>Advanced Particle Simulator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2a2a2a;
+            --accent-primary: #4a90e2;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --panel-bg: rgba(0, 0, 0, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --button-hover: rgba(255, 255, 255, 0.2);
+            --button-active: rgba(255, 255, 255, 0.3);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-weight: 500;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .header-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        .header-nav h1 {
+            margin: 0;
+            font-size: 1.5em;
+            color: var(--text-primary);
+        }
+
+        .nav-controls {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-toggle {
+            background: var(--button-hover);
+            border: 1px solid var(--panel-border);
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-toggle:hover {
+            background: var(--button-active);
+        }
+
+        .nav-toggle i {
+            font-size: 16px;
+        }
+
+        .nav-toggle span {
+            font-size: 14px;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid var(--panel-border);
+            padding: 15px;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            position: fixed;
+            top: 80px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .material-panel {
+            left: 20px;
+            width: 300px;
+        }
+
+        .control-panel {
+            right: 20px;
+            width: 300px;
+        }
+
+        .settings-panel {
+            bottom: 20px;
+            right: 20px;
+            top: auto;
+            width: auto;
+        }
+
+        .panel.collapsed {
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .material-panel.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .control-panel.collapsed {
+            transform: translateX(100%);
+        }
+
+        .settings-panel.collapsed {
+            transform: translateY(100%);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: var(--button-hover);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: var(--button-active);
+            transform: translateY(-1px);
+        }
+
+        .btn.selected {
+            background: var(--accent-primary);
+        }
+
+        .material-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .material-btn {
+            padding: 12px;
+            background: var(--button-hover);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
+
+        .material-btn:hover {
+            background: var(--button-active);
+        }
+
+        .material-btn.selected {
+            background: var(--accent-primary);
+        }
+
+        /* Add tooltip styles */
+        .material-btn::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 8px;
+            background: var(--panel-bg);
+            color: var(--text-primary);
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            z-index: 1000;
+            margin-bottom: 5px;
+        }
+
+        .material-btn:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .slider-container {
+            margin: 15px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: var(--button-hover);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .color-picker {
+            margin: 15px 0;
+        }
+
+        .color-picker label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        input[type="color"] {
+            width: 100%;
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .tutorial {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--panel-bg);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            z-index: 1000;
+        }
+
+        .tutorial.hidden {
+            display: none;
+        }
+
+        .tutorial h2 {
+            margin-top: 0;
+            color: var(--text-primary);
+        }
+
+        .tutorial p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .tutorial-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        .tutorial-list li {
+            margin: 10px 0;
+            padding-left: 25px;
+            position: relative;
+            color: var(--text-secondary);
+        }
+
+        .tutorial-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--accent-primary);
+        }
+
+        .welcome-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            text-align: center;
+            padding: 20px;
+            transition: opacity 0.3s ease;
+        }
+
+        .welcome-screen.hidden {
+            display: none;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .welcome-screen h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .welcome-screen p {
+            font-size: 1.2em;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .start-btn {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            background: var(--accent-primary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: #5a9fe2;
+        }
+
+        .start-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .button-group .btn {
+            flex: 1;
+        }
+
+        .panel-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px;
+            opacity: 1;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+            z-index: 1000;
+            pointer-events: auto;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-toggle:hover {
+            opacity: 1;
+            background: var(--button-hover);
+        }
+
+        .panel-toggle i {
+            font-size: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .panel.collapsed .panel-toggle {
+            position: fixed;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .material-panel.collapsed .panel-toggle {
+            bottom: 20px;
+            left: 20px;
+            top: auto;
+            right: auto;
+        }
+
+        .control-panel.collapsed .panel-toggle {
+            top: 20px;
+            right: 20px;
+        }
+
+        .settings-panel.collapsed .panel-toggle {
+            bottom: 20px;
+            right: 20px;
+            top: auto;
+        }
+
+        .panel.collapsed .panel-toggle i {
+            transform: rotate(180deg);
+        }
+
+        .material-btn[disabled],
+        .btn[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .material-btn i {
+            font-size: 1.2em;
+            width: 20px;
+            text-align: center;
+        }
+
+        .material-btn span {
+            font-size: 0.9em;
+        }
+
+        .color-picker input[type="color"] {
+            width: 100%;
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+        }
+
+        .color-picker input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .color-picker input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 8px;
+        }
+
+        .slider-container input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--button-hover);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s ease;
+        }
+
+        .slider-container input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .slider-container input[type="range"]::-moz-range-track {
+            height: 6px;
+            background: var(--button-hover);
+            border-radius: 3px;
+        }
+
+        .slider-container input[type="range"]::-moz-range-progress {
+            height: 6px;
+            background: var(--accent-primary);
+            border-radius: 3px;
+        }
+
+        .slider-container input[type="range"]:focus {
+            outline: none;
+        }
+
+        .slider-container input[type="range"]:focus::-webkit-slider-thumb {
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.3);
+        }
+
+        .slider-container input[type="range"]:focus::-moz-range-thumb {
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .header-nav {
+                height: 50px;
+                padding: 0 10px;
+            }
+
+            .header-nav h1 {
+                font-size: 1.2em;
+            }
+
+            .nav-toggle span {
+                display: none;
+            }
+
+            .nav-toggle {
+                padding: 6px;
+            }
+
+            .panel {
+                top: 70px;
+                max-height: calc(100vh - 90px);
+            }
+
+            .material-panel {
+                left: 10px;
+                right: 10px;
+                width: auto;
+            }
+
+            .control-panel {
+                left: 10px;
+                right: 10px;
+                width: auto;
+            }
+
+            .settings-panel {
+                left: 10px;
+                right: 10px;
+                width: auto;
+            }
+
+            .material-panel.collapsed {
+                transform: translateY(100%);
+            }
+
+            .control-panel.collapsed {
+                transform: translateY(100%);
+            }
+
+            .settings-panel.collapsed {
+                transform: translateY(100%);
+            }
+
+            .material-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+            }
+
+            .material-btn {
+                padding: 12px 8px;
+                flex-direction: column;
+                justify-content: center;
+                text-align: center;
+                min-height: 60px;
+            }
+
+            .material-btn i {
+                font-size: 1.4em;
+                margin-bottom: 4px;
+            }
+
+            .material-btn span {
+                display: block;
+                font-size: 0.7em;
+                line-height: 1.2;
+            }
+
+            /* Show tooltip on mobile tap */
+            .material-btn:active::after {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .button-group {
+                flex-wrap: wrap;
+            }
+
+            .button-group .btn {
+                flex: 1 1 calc(50% - 4px);
+                padding: 8px;
+                font-size: 12px;
+            }
+
+            .panel {
+                padding: 15px;
+                margin: 0;
+            }
+
+            .slider-container {
+                margin: 10px 0;
+            }
+
+            .color-picker {
+                margin: 10px 0;
+            }
+
+            .panel-toggle {
+                top: 8px;
+                right: 8px;
+                padding: 4px;
+            }
+
+            .welcome-screen {
+                padding: 15px;
+            }
+
+            .welcome-screen h1 {
+                font-size: 2em;
+            }
+
+            .welcome-screen p {
+                font-size: 1em;
+            }
+
+            .start-btn {
+                padding: 12px 30px;
+                font-size: 1.1em;
+            }
+
+            .tutorial {
+                padding: 20px;
+                width: calc(100% - 40px);
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+        }
+
+        /* Add touch-friendly styles */
+        @media (hover: none) {
+            .btn:active,
+            .material-btn:active {
+                transform: scale(0.98);
+            }
+
+            .slider-container input[type="range"]::-webkit-slider-thumb {
+                width: 24px;
+                height: 24px;
+            }
+
+            .slider-container input[type="range"]::-moz-range-thumb {
+                width: 24px;
+                height: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="header-nav">
+        <h1>Advanced Particle Simulator</h1>
+        <div class="nav-controls">
+            <button class="nav-toggle" id="toggle-materials">
+                <i class="fas fa-palette"></i>
+                <span>Materials</span>
+            </button>
+            <button class="nav-toggle" id="toggle-controls">
+                <i class="fas fa-sliders-h"></i>
+                <span>Controls</span>
+            </button>
+            <button class="nav-toggle" id="toggle-settings">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="ui-container">
+        <div class="material-panel panel">
+            <div class="material-grid">
+                <button class="material-btn" id="set_sand" title="Sand (S)">
+                    <i class="fas fa-circle"></i>
+                    <span>Sand</span>
+                </button>
+                <button class="material-btn" id="set_water" title="Water (W)">
+                    <i class="fas fa-tint"></i>
+                    <span>Water</span>
+                </button>
+                <button class="material-btn" id="set_wall" title="Wall (L)">
+                    <i class="fas fa-square"></i>
+                    <span>Wall</span>
+                </button>
+                <button class="material-btn" id="set_oil" title="Oil (O)">
+                    <i class="fas fa-oil-can"></i>
+                    <span>Oil</span>
+                </button>
+                <button class="material-btn" id="set_fire" title="Fire (F)">
+                    <i class="fas fa-fire"></i>
+                    <span>Fire</span>
+                </button>
+                <button class="material-btn" id="set_smoke" title="Smoke (M)">
+                    <i class="fas fa-smog"></i>
+                    <span>Smoke</span>
+                </button>
+                <button class="material-btn" id="set_ice" title="Ice (I)">
+                    <i class="fas fa-snowflake"></i>
+                    <span>Ice</span>
+                </button>
+                <button class="material-btn" id="set_lava" title="Lava (V)">
+                    <i class="fas fa-volcano"></i>
+                    <span>Lava</span>
+                </button>
+                <button class="material-btn" id="set_steam" title="Steam (T)">
+                    <i class="fas fa-cloud"></i>
+                    <span>Steam</span>
+                </button>
+                <button class="material-btn" id="set_acid" title="Acid (A)">
+                    <i class="fas fa-flask"></i>
+                    <span>Acid</span>
+                </button>
+                <button class="material-btn" id="set_salt" title="Salt (C)">
+                    <i class="fas fa-snowflake"></i>
+                    <span>Salt</span>
+                </button>
+                <button class="material-btn" id="set_wood" title="Wood (D)">
+                    <i class="fas fa-tree"></i>
+                    <span>Wood</span>
+                </button>
+                <button class="material-btn" id="set_metal" title="Metal (R)">
+                    <i class="fas fa-cube"></i>
+                    <span>Metal</span>
+                </button>
+                <button class="material-btn" id="set_plant" title="Plant (P)">
+                    <i class="fas fa-seedling"></i>
+                    <span>Plant</span>
+                </button>
+                <button class="material-btn" id="set_glass" title="Glass (G)">
+                    <i class="fas fa-wine-glass"></i>
+                    <span>Glass</span>
+                </button>
+                <button class="material-btn" id="set_eraser" title="Eraser (E)">
+                    <i class="fas fa-eraser"></i>
+                    <span>Eraser</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="control-panel panel">
+            <div class="slider-container">
+            <label for="gravity">Gravity</label>
+            <input type="range" id="gravity" min="0" max="2" step="0.1" value="1">
+        </div>
+            <div class="slider-container">
+            <label for="wind">Wind</label>
+            <input type="range" id="wind" min="-2" max="2" step="0.1" value="0">
+        </div>
+            <div class="slider-container">
+            <label for="temperature">Temperature</label>
+            <input type="range" id="temperature" min="-50" max="100" value="20">
+        </div>
+            <div class="slider-container">
+            <label for="brush-size">Brush Size</label>
+            <input type="range" id="brush-size" min="1" max="20" value="3">
+        </div>
+        <div class="color-picker">
+            <label for="sand-color">Sand Color</label>
+            <input type="color" id="sand-color" value="#c8aa78">
+        </div>
+        <div class="color-picker">
+            <label for="water-color">Water Color</label>
+            <input type="color" id="water-color" value="#4678e6">
+        </div>
+            <div class="button-group">
+                <button class="btn" id="clear">Clear</button>
+                <button class="btn" id="pause">Pause</button>
+                <button class="btn" id="undo">Undo</button>
+                <button class="btn" id="redo">Redo</button>
+            </div>
+        </div>
+
+        <div class="settings-panel panel">
+            <button class="btn" id="save-pattern">
+                <i class="fas fa-save"></i>
+                <span>Save</span>
+            </button>
+            <button class="btn" id="load-pattern">
+                <i class="fas fa-folder-open"></i>
+                <span>Load</span>
+            </button>
+            <button class="btn" id="share-pattern">
+                <i class="fas fa-share-alt"></i>
+                <span>Share</span>
+            </button>
+            <button class="btn" id="show-tutorial">
+                <i class="fas fa-question-circle"></i>
+                <span>Help</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="welcome-screen" id="welcome-screen">
+        <h1>Advanced Particle Simulator</h1>
+        <p>Create amazing particle simulations with multiple materials and physics effects!</p>
+        <p>Use your mouse or touch to draw. Try different materials and watch how they interact!</p>
+        <button class="start-btn" id="start-btn" type="button">Start Creating!</button>
+    </div>
+
+    <div class="tutorial" id="tutorial">
+        <h2>Welcome to the Advanced Particle Simulator!</h2>
+        <p>Here's how to get started:</p>
+        <ul class="tutorial-list">
+            <li>Click and drag to draw particles</li>
+            <li>Use different materials to create interesting effects</li>
+            <li>Adjust gravity, wind, and temperature to change behavior</li>
+            <li>Save your favorite patterns to load them later</li>
+            <li>Share your creations with others</li>
+        </ul>
+        <button class="btn" id="close-tutorial">Got it!</button>
+    </div>
+
+    <script src="./main.js"></script>
+</body>
+</html>
